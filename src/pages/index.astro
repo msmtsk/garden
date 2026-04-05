@@ -1,0 +1,185 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import products from '../../products.json';
+import config from '../../config.json';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const types = ['Все', ...config.productTypes];
+const categories = ['Все', ...config.categories];
+---
+
+<Layout>
+  <div class="hero">
+    <div class="container hero-inner">
+      <div class="hero-text">
+        <div class="hero-eyebrow">{config.location} · Домашняя коллекция</div>
+        <h1 class="hero-title">Живые растения<br/><em>с душой</em></h1>
+        <p class="hero-desc">{config.siteDescription}. Детки, срезы и взрослые растения для вашей коллекции.</p>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-pill">
+          <span class="stat-num">{products.length}</span>
+          <span class="stat-label">позиций</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-num">{products.filter(p => p.inStock).length}</span>
+          <span class="stat-label">в наличии</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container catalog">
+    <div class="filters" id="filters">
+      <div class="filter-group">
+        <span class="filter-label">Тип:</span>
+        {types.map(t => (
+          <button class={`chip ${t === 'Все' ? 'chip-active' : ''}`} data-filter-type={t}>{t}</button>
+        ))}
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Категория:</span>
+        {categories.map(c => (
+          <button class={`chip ${c === 'Все' ? 'chip-active' : ''}`} data-filter-cat={c}>{c}</button>
+        ))}
+      </div>
+      <label class="filter-stock">
+        <input type="checkbox" id="only-stock" /> Только в наличии
+      </label>
+    </div>
+
+    <div class="catalog-header">
+      <span class="catalog-count" id="catalog-count">{products.length} позиций</span>
+    </div>
+
+    <div class="grid" id="catalog-grid">
+      {products.map(product => (
+        <div
+          class="grid-item"
+          data-type={product.type}
+          data-cat={product.category}
+          data-stock={product.inStock ? 'true' : 'false'}
+        >
+          <ProductCard product={product} base={base} />
+        </div>
+      ))}
+    </div>
+
+    <div class="empty-state" id="empty-state" style="display:none">
+      <div class="empty-icon">🌱</div>
+      <div class="empty-text">По этому фильтру ничего не найдено</div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .hero {
+    background: #fff;
+    border-bottom: 0.5px solid var(--border);
+    padding: 2.5rem 0 2rem;
+  }
+  .hero-inner {
+    display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;
+  }
+  .hero-eyebrow {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--green); margin-bottom: 10px;
+  }
+  .hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px; font-weight: 400; line-height: 1.1; margin-bottom: 12px;
+  }
+  .hero-title em { font-style: italic; color: var(--green); }
+  .hero-desc { font-size: 14px; color: var(--text-muted); max-width: 420px; line-height: 1.7; }
+  .hero-stats { display: flex; gap: 12px; flex-shrink: 0; }
+  .stat-pill {
+    background: var(--bg-soft); border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 14px 20px; text-align: center;
+  }
+  .stat-num { display: block; font-size: 28px; font-weight: 500; }
+  .stat-label { font-size: 12px; color: var(--text-muted); }
+
+  .catalog { padding-top: 1.5rem; padding-bottom: 3rem; }
+
+  .filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.25rem; }
+  .filter-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .filter-label { font-size: 12px; color: var(--text-muted); margin-right: 2px; white-space: nowrap; }
+  .chip {
+    font-size: 12px; padding: 5px 12px; border-radius: 20px;
+    cursor: pointer; border: 0.5px solid var(--border);
+    background: #fff; color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--border-hover); color: var(--text); }
+  .chip-active { background: var(--green); color: #fff; border-color: var(--green); }
+  .filter-stock { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+  .catalog-header { margin-bottom: 1rem; }
+  .catalog-count { font-size: 13px; color: var(--text-muted); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .grid-item.hidden { display: none; }
+
+  .empty-state { text-align: center; padding: 4rem 0; }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-text { font-size: 14px; color: var(--text-muted); }
+
+  @media (max-width: 600px) {
+    .hero-title { font-size: 36px; }
+    .hero-stats { display: none; }
+  }
+</style>
+
+<script>
+  let activeType = 'Все';
+  let activeCat = 'Все';
+  let onlyStock = false;
+
+  function applyFilters() {
+    const items = document.querySelectorAll<HTMLElement>('.grid-item');
+    let visible = 0;
+    items.forEach(item => {
+      const type = item.dataset.type!;
+      const cat = item.dataset.cat!;
+      const stock = item.dataset.stock === 'true';
+      const show =
+        (activeType === 'Все' || type === activeType) &&
+        (activeCat === 'Все' || cat === activeCat) &&
+        (!onlyStock || stock);
+      item.classList.toggle('hidden', !show);
+      if (show) visible++;
+    });
+    const countEl = document.getElementById('catalog-count');
+    if (countEl) countEl.textContent = `${visible} позиций`;
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-filter-type]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter-type]').forEach(b => b.classList.remove('chip-active'));
+      btn.classList.add('chip-active');
+      activeType = btn.dataset.filterType!;
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-filter-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter-cat]').forEach(b => b.classList.remove('chip-active'));
+      btn.classList.add('chip-active');
+      activeCat = btn.dataset.filterCat!;
+      applyFilters();
+    });
+  });
+
+  document.getElementById('only-stock')?.addEventListener('change', (e) => {
+    onlyStock = (e.target as HTMLInputElement).checked;
+    applyFilters();
+  });
+</script>

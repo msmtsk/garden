@@ -1,0 +1,57 @@
+{
+  "siteName": "Mary's Garden",
+  "siteDescription": "Домашняя коллекция комнатных растений",
+  "location": "Саратов",
+
+  "contacts": [
+    {
+      "label": "ВКонтакте",
+      "url": "https://vk.com/maria__govorova",
+      "color": "#4680C2"
+    },
+    {
+      "label": "Telegram",
+      "url": "https://t.me/mariia_smtsk",
+      "color": "#29B5E8"
+    },
+    {
+      "label": "Авито",
+      "url": "https://www.avito.ru/user/df727a3286ff534c818d88f35624ca6f/profile",
+      "color": "#00AAFF"
+    }
+  ],
+
+  "delivery": [
+    {
+      "id": "samovyvoz",
+      "name": "Самовывоз",
+      "description": "Саратов, по договорённости",
+      "enabled": true
+    },
+    {
+      "id": "pochta",
+      "name": "Почта России",
+      "description": "По России, ~5–10 дней",
+      "enabled": false
+    },
+    {
+      "id": "cdek",
+      "name": "СДЭК",
+      "description": "По России, ~3–5 дней",
+      "enabled": false
+    }
+  ],
+
+  "productTypes": [
+    "Детка",
+    "Срез",
+    "Взрослое",
+    "Укоренённый лист"
+  ],
+
+  "categories": [
+    "Фиалки",
+    "Суккуленты",
+    "Другое"
+  ]
+}

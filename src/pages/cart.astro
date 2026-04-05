@@ -1,0 +1,341 @@
+---
+import Layout from '../layouts/Layout.astro';
+import config from '../../config.json';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const enabledDelivery = config.delivery.filter(d => d.enabled);
+const vkContact = config.contacts.find((c) => c.label === 'ВКонтакте');
+const vkUrl = vkContact?.url ?? '';
+---
+
+<Layout title="Корзина">
+  <div class="container cart-page">
+
+    <h1 class="page-title">Корзина</h1>
+
+    <div class="layout">
+
+      <div class="cart-main">
+        <div id="cart-empty" class="empty-state" style="display:none">
+          <div class="empty-icon">🛒</div>
+          <div class="empty-text">Корзина пуста</div>
+          <a href={`${base}/`} class="btn-back">Перейти в каталог</a>
+        </div>
+        <div id="cart-items"></div>
+      </div>
+
+      <div class="cart-aside" id="cart-aside">
+
+        {enabledDelivery.length > 0 && (
+          <div class="aside-section">
+            <div class="aside-title">Доставка</div>
+            {enabledDelivery.map((d, i) => (
+              <label class={`delivery-opt ${i === 0 ? 'delivery-opt-active' : ''}`}>
+                <input type="radio" name="delivery" value={d.name} checked={i === 0} class="sr-only" />
+                <span class="delivery-radio"></span>
+                <span class="delivery-info">
+                  <span class="delivery-name">{d.name}</span>
+                  <span class="delivery-desc">{d.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <div class="aside-section">
+          <div class="aside-title">Состав заказа</div>
+          <div id="summary-lines" class="summary-lines"></div>
+          <div class="summary-total">
+            <span>Итого</span>
+            <span id="summary-total">0 ₽</span>
+          </div>
+        </div>
+
+        <div class="aside-section">
+          <div class="aside-title">Сообщение продавцу</div>
+          <div class="vk-preview" id="vk-preview"></div>
+        </div>
+
+        <button class="btn-vk" id="send-order">
+          Написать продавцу →
+        </button>
+        <div class="order-note">
+          Текст заказа скопируется автоматически —<br />вставьте его в сообщение (Ctrl+V)
+        </div>
+
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .cart-page { padding: 1.5rem 1.5rem 3rem; }
+  .page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px; font-weight: 500; margin-bottom: 1.5rem;
+  }
+
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; align-items: start; }
+
+  :global(.cart-item) {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: #fff; border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+  :global(.cart-item:hover) { border-color: var(--border-hover); }
+  :global(.item-img) {
+    width: 110px; height: 110px; border-radius: 10px;
+    background: #f5f0fa; overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 36px;
+  }
+  :global(.item-img img) { width: 100%; height: 100%; object-fit: cover; }
+  :global(.item-body) { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
+  :global(.item-name) {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; font-weight: 500; line-height: 1.2;
+  }
+  :global(.item-meta) { font-size: 13px; color: var(--text-muted); }
+  :global(.item-right) { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; flex-shrink: 0; padding-top: 2px; }
+  :global(.item-price) { font-size: 18px; font-weight: 500; }
+  :global(.item-qty) { display: flex; align-items: center; gap: 10px; }
+  :global(.qty-btn) {
+    width: 32px; height: 32px; border-radius: 7px;
+    border: 0.5px solid var(--border); background: var(--bg-soft);
+    cursor: pointer; font-size: 18px; font-family: inherit; color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s;
+  }
+  :global(.qty-btn:hover) { border-color: var(--border-hover); }
+  :global(.qty-num) { font-size: 15px; font-weight: 500; min-width: 20px; text-align: center; }
+  :global(.item-remove) {
+    font-size: 12px; color: var(--text-faint); cursor: pointer;
+    background: none; border: none; font-family: inherit; padding: 0;
+    transition: color 0.15s;
+  }
+  :global(.item-remove:hover) { color: #c0392b; }
+
+  .cart-aside { display: flex; flex-direction: column; gap: 0; position: sticky; top: 80px; }
+  .aside-section {
+    background: #fff; border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  }
+  .aside-title {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 10px;
+  }
+
+  .delivery-opt {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px; border: 0.5px solid var(--border);
+    margin-bottom: 6px; cursor: pointer; background: #fff;
+  }
+  .delivery-opt-active { border-color: var(--green); background: #f4f9f2; }
+  .sr-only { position: absolute; opacity: 0; width: 0; height: 0; }
+  .delivery-radio {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1.5px solid var(--border-hover); flex-shrink: 0;
+  }
+  .delivery-opt-active .delivery-radio {
+    border-color: var(--green);
+    background: radial-gradient(circle, var(--green) 45%, transparent 45%);
+  }
+  .delivery-name { display: block; font-size: 13px; font-weight: 500; }
+  .delivery-desc { display: block; font-size: 11px; color: var(--text-muted); }
+
+  .summary-lines { margin-bottom: 10px; }
+  .summary-line {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text-muted);
+    padding: 4px 0; border-bottom: 0.5px solid var(--border);
+  }
+  .summary-line:last-child { border-bottom: none; }
+  .summary-total {
+    display: flex; justify-content: space-between;
+    font-size: 16px; font-weight: 500;
+    padding-top: 8px; border-top: 0.5px solid var(--border);
+  }
+
+  .vk-preview {
+    background: #f8f7f5; border-radius: 7px; padding: 10px 12px;
+    font-size: 12px; color: var(--text-muted); line-height: 1.7; white-space: pre-line;
+  }
+
+  .btn-vk {
+    width: 100%; background: #4680C2; color: #fff;
+    border: none; border-radius: 8px; padding: 13px;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; margin-bottom: 8px;
+    transition: background 0.15s;
+  }
+  .btn-vk:hover { background: #3566A8; }
+  .order-note { font-size: 11px; color: var(--text-faint); text-align: center; line-height: 1.6; }
+
+  .empty-state { text-align: center; padding: 4rem 0; }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-text { font-size: 15px; color: var(--text-muted); margin-bottom: 16px; }
+  .btn-back {
+    display: inline-block; background: var(--green); color: #fff;
+    border-radius: 8px; padding: 10px 20px; text-decoration: none;
+    font-size: 14px; font-weight: 500;
+  }
+
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; }
+    .cart-aside { position: static; }
+  }
+</style>
+
+<script define:vars={{ vkUrl, enabledDelivery }}>
+  let cart = JSON.parse(localStorage.getItem('mg-cart') || '[]');
+  let selectedDelivery = enabledDelivery[0]?.name ?? '';
+
+  function save() {
+    localStorage.setItem('mg-cart', JSON.stringify(cart));
+    window.dispatchEvent(new Event('mg-cart-updated'));
+  }
+
+  function totalPrice() {
+    return cart.reduce((s, i) => s + i.price * i.qty, 0);
+  }
+
+  function buildMessage() {
+    const lines = cart.map(i => `— ${i.name} (${i.type}) × ${i.qty} — ${i.price * i.qty} ₽`);
+    const parts = [
+      'Здравствуйте! Хочу заказать:',
+      ...lines,
+      '',
+      `Итого: ${totalPrice()} ₽`,
+    ];
+    if (selectedDelivery) parts.push(`Доставка: ${selectedDelivery}`);
+    return parts.join('\n');
+  }
+
+  function renderSummary() {
+    const linesEl = document.getElementById('summary-lines');
+    const totalEl = document.getElementById('summary-total');
+    const previewEl = document.getElementById('vk-preview');
+    if (linesEl) {
+      linesEl.innerHTML = cart.map(i =>
+        `<div class="summary-line"><span>${i.name} × ${i.qty}</span><span>${i.price * i.qty} ₽</span></div>`
+      ).join('');
+    }
+    if (totalEl) totalEl.textContent = `${totalPrice()} ₽`;
+    if (previewEl) previewEl.textContent = buildMessage();
+  }
+
+  function renderItems() {
+    const itemsEl = document.getElementById('cart-items');
+    const emptyEl = document.getElementById('cart-empty');
+    const asideEl = document.getElementById('cart-aside');
+    if (!itemsEl) return;
+
+    if (cart.length === 0) {
+      itemsEl.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = 'block';
+      if (asideEl) asideEl.style.display = 'none';
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (asideEl) asideEl.style.display = '';
+
+    const base = window.SITE_BASE || '';
+    itemsEl.innerHTML = cart.map((item, idx) => `
+      <div class="cart-item">
+        <div class="item-img">
+          <img src="${base}/images/${item.id}/1.jpg" alt="${item.name}"
+            onerror="this.style.display='none';this.parentElement.textContent='🌿'" />
+        </div>
+        <div class="item-body">
+          <div class="item-name">${item.name}</div>
+          <div class="item-meta">${item.price} ₽ / шт</div>
+        </div>
+        <div class="item-right">
+          <div class="item-price">${item.price * item.qty} ₽</div>
+          <div class="item-qty">
+            <button class="qty-btn" data-idx="${idx}" data-action="minus">−</button>
+            <span class="qty-num">${item.qty}</span>
+            <button class="qty-btn" data-idx="${idx}" data-action="plus">+</button>
+          </div>
+          <button class="item-remove" data-remove="${idx}">удалить</button>
+        </div>
+      </div>
+    `).join('');
+
+    itemsEl.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.idx);
+        if (btn.dataset.action === 'plus') cart[idx].qty += 1;
+        if (btn.dataset.action === 'minus') {
+          cart[idx].qty -= 1;
+          if (cart[idx].qty <= 0) cart.splice(idx, 1);
+        }
+        save(); renderItems(); renderSummary();
+      });
+    });
+
+    itemsEl.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        cart.splice(Number(btn.dataset.remove), 1);
+        save(); renderItems(); renderSummary();
+      });
+    });
+  }
+
+  // Delivery selection
+  document.querySelectorAll('.delivery-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.delivery-opt').forEach(o => o.classList.remove('delivery-opt-active'));
+      opt.classList.add('delivery-opt-active');
+      selectedDelivery = opt.querySelector('.delivery-name')?.textContent ?? '';
+      renderSummary();
+    });
+  });
+
+  // Send order
+  document.getElementById('send-order')?.addEventListener('click', async () => {
+    if (cart.length === 0) return;
+    const msg = buildMessage();
+
+    try {
+      await navigator.clipboard.writeText(msg);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = msg;
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+
+    const btn = document.getElementById('send-order');
+    if (btn) {
+      btn.textContent = '✓ Скопировано — вставьте в сообщение';
+      btn.style.background = '#3D6B32';
+    }
+    setTimeout(() => {
+      const chatUrl = vkUrl.replace('vk.com/', 'vk.me/');
+      window.open(chatUrl, '_blank');
+      setTimeout(() => {
+        if (btn) {
+          btn.textContent = 'Написать продавцу →';
+          btn.style.background = '';
+        }
+      }, 3000);
+    }, 700);
+  });
+
+  // Init — wait for DOM
+  document.addEventListener('DOMContentLoaded', () => {
+    renderItems();
+    renderSummary();
+  });
+
+  // Also run immediately in case DOMContentLoaded already fired
+  if (document.readyState !== 'loading') {
+    renderItems();
+    renderSummary();
+  }
+</script>

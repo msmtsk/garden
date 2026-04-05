@@ -1,0 +1,74 @@
+[
+  {
+    "id": "fialka1",
+    "name": "ЕК Сердце Королевства",
+    "category": "Фиалки",
+    "type": "Детка",
+    "price": 250,
+    "inStock": true,
+    "quantity": 3,
+    "description": "Тёмно-розовый полумахровый цветок с чётко очерченной белоснежной каймой. Волнистый край лепестков придаёт сорту особую нарядность. Компактная стандартная розетка, хорошо держит форму. Охотно цветёт, цветонос крепкий.",
+    "author": "Е.К. Коршунова",
+    "attributes": {
+      "rozetteSize": "Стандарт",
+      "flowerType": "Полумахровый",
+      "color": "Розовый с белой каймой",
+      "petalEdge": "Волнистый",
+      "foliage": "Тёмно-зелёная, стёганая"
+    }
+  },
+  {
+    "id": "izumrudny-mirazh",
+    "name": "Изумрудный Мираж",
+    "category": "Фиалки",
+    "type": "Взрослое",
+    "price": 700,
+    "inStock": true,
+    "quantity": 1,
+    "description": "Фантазийная окраска с зелёными вкраплениями. Крупный цветок, эффектно смотрится в коллекции.",
+    "author": "",
+    "attributes": {
+      "rozetteSize": "Стандарт",
+      "flowerType": "Простой",
+      "color": "Белый с зелёными вкраплениями",
+      "petalEdge": "",
+      "foliage": ""
+    }
+  },
+  {
+    "id": "persikovy-zakat",
+    "name": "Персиковый Закат",
+    "category": "Фиалки",
+    "type": "Срез",
+    "price": 180,
+    "inStock": true,
+    "quantity": 5,
+    "description": "Нежный персиковый цвет с коралловым переходом к краям лепестков.",
+    "author": "",
+    "attributes": {
+      "rozetteSize": "",
+      "flowerType": "Простой",
+      "color": "Персиковый с коралловым",
+      "petalEdge": "",
+      "foliage": ""
+    }
+  },
+  {
+    "id": "siniy-barhat",
+    "name": "Синий Бархат",
+    "category": "Фиалки",
+    "type": "Детка",
+    "price": 300,
+    "inStock": false,
+    "quantity": 0,
+    "description": "Насыщенный сине-фиолетовый цвет с бархатистой текстурой лепестков.",
+    "author": "",
+    "attributes": {
+      "rozetteSize": "Полуминиатюра",
+      "flowerType": "Простой",
+      "color": "Сине-фиолетовый",
+      "petalEdge": "",
+      "foliage": ""
+    }
+  }
+]

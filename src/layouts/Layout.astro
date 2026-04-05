@@ -1,0 +1,184 @@
+---
+import config from '../../config.json';
+
+interface Props {
+  title?: string;
+}
+
+const { title } = Astro.props;
+const pageTitle = title ? `${title} — ${config.siteName}` : config.siteName;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{pageTitle}</title>
+  <meta name="description" content={config.siteDescription} />
+  <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" />
+  <script define:vars={{ base }}>
+    window.SITE_BASE = base;
+  </script>
+</head>
+<body>
+  <div class="site-wrapper">
+    <header class="nav">
+      <a href={`${base}/`} class="nav-logo">
+        Mary's <em>Garden</em>
+      </a>
+      <nav class="nav-links">
+        <a href={`${base}/`} class="nav-link">Каталог</a>
+        {config.contacts.map(c => (
+          <a href={c.url} target="_blank" rel="noopener" class="nav-link nav-link-ext">
+            <span class="ext-dot" style={`background:${c.color}`}></span>
+            {c.label}
+          </a>
+        ))}
+      </nav>
+      <button class="nav-cart" id="cart-btn">
+        <span class="cart-dot" id="cart-count">0</span>
+        Корзина
+      </button>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <span class="footer-name">{config.siteName}</span>
+        <span class="footer-loc">{config.location}</span>
+        <div class="footer-links">
+          {config.contacts.map(c => (
+            <a href={c.url} target="_blank" rel="noopener" class="footer-link">
+              <span class="ext-dot" style={`background:${c.color}`}></span>
+              {c.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    function updateCartCount() {
+      const cart = JSON.parse(localStorage.getItem('mg-cart') || '[]');
+      const count = cart.reduce((sum: number, item: any) => sum + item.qty, 0);
+      const el = document.getElementById('cart-count');
+      if (el) el.textContent = String(count);
+    }
+    updateCartCount();
+    window.addEventListener('mg-cart-updated', updateCartCount);
+
+    document.getElementById('cart-btn')?.addEventListener('click', () => {
+      window.location.href = `${window.SITE_BASE}/cart`;
+    });
+  </script>
+</body>
+</html>
+
+<style is:global>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #5A8C4E;
+    --green-light: #EEF4EB;
+    --green-dark: #3D6B32;
+    --text: #1a1a1a;
+    --text-muted: #666;
+    --text-faint: #999;
+    --border: rgba(0,0,0,0.1);
+    --border-hover: rgba(0,0,0,0.2);
+    --bg: #fff;
+    --bg-soft: #f8f7f5;
+    --radius: 10px;
+    --max-width: 1100px;
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg-soft);
+    line-height: 1.6;
+  }
+
+  .site-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
+
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center;
+    gap: 1.5rem; padding: 0.875rem 1.5rem;
+  }
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; font-weight: 500;
+    text-decoration: none; color: var(--text); white-space: nowrap;
+  }
+  .nav-logo em { font-style: italic; color: var(--green); }
+  .nav-links { display: flex; gap: 1rem; align-items: center; margin-left: auto; }
+  .nav-link {
+    font-size: 13px; color: var(--text-muted);
+    text-decoration: none; display: flex; align-items: center; gap: 5px;
+  }
+  .nav-link:hover { color: var(--text); }
+  .nav-link-ext { font-size: 12px; }
+
+  .ext-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+  .nav-cart {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--green-light); color: var(--green-dark);
+    border: none; border-radius: 20px;
+    padding: 6px 14px; font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  }
+  .cart-dot {
+    width: 20px; height: 20px; background: var(--green);
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; color: #fff;
+  }
+
+  .footer {
+    margin-top: auto;
+    border-top: 0.5px solid var(--border);
+    background: var(--bg); padding: 1.25rem 1.5rem;
+  }
+  .footer-inner {
+    max-width: var(--max-width); margin: 0 auto;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    font-size: 13px; color: var(--text-muted);
+  }
+  .footer-name { font-weight: 500; color: var(--text); }
+  .footer-links { display: flex; gap: 1rem; margin-left: auto; }
+  .footer-link {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--text-muted); text-decoration: none;
+  }
+  .footer-link:hover { color: var(--text); }
+
+  .container { max-width: var(--max-width); margin: 0 auto; padding: 0 1.5rem; }
+
+  .badge {
+    display: inline-block; font-size: 10px; padding: 3px 8px;
+    border-radius: 20px; font-weight: 500; letter-spacing: 0.04em;
+    text-transform: uppercase; white-space: nowrap;
+  }
+  .badge-detka { background: #EEF0FF; color: #4A52B0; }
+  .badge-srez { background: #E8F6EE; color: #1E7A46; }
+  .badge-vzrosly { background: #FFF4E0; color: #8A5C00; }
+  .badge-list { background: #F0EBF8; color: #6040A0; }
+  .badge-other { background: #F0F0F0; color: #555; }
+
+  @media (max-width: 600px) {
+    .nav-links .nav-link-ext { display: none; }
+  }
+</style>
