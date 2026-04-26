@@ -1,5 +1,9 @@
 # 🌿 Mary's Garden — инструкция по управлению сайтом
 
+🔗 **Сайт:** [msmtsk.github.io/garden](https://msmtsk.github.io/garden/)
+
+---
+
 ## Локальный запуск
 
 Нужен установленный [Node.js](https://nodejs.org/) (версия 18+).
