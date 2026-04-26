@@ -54,6 +54,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <div class="footer-inner">
         <span class="footer-name">{config.siteName}</span>
         <span class="footer-loc">{config.location}</span>
+        <span class="footer-copy">© <span id="footer-year"></span> Мария Смятская</span>
         <div class="footer-links">
           {config.contacts.map(c => (
             <a href={c.url} target="_blank" rel="noopener" class="footer-link">
@@ -79,6 +80,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     document.getElementById('cart-btn')?.addEventListener('click', () => {
       window.location.href = `${window.SITE_BASE}/cart`;
     });
+
+    const yearEl = document.getElementById('footer-year');
+    if (yearEl) yearEl.textContent = String(new Date().getFullYear());
   </script>
 </body>
 </html>
@@ -158,6 +162,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     font-size: 13px; color: var(--text-muted);
   }
   .footer-name { font-weight: 500; color: var(--text); }
+  .footer-copy { font-size: 11px; color: var(--text-faint); }
   .footer-links { display: flex; gap: 1rem; margin-left: auto; }
   .footer-link {
     display: flex; align-items: center; gap: 5px;

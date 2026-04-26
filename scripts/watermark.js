@@ -18,9 +18,11 @@ const CONFIG = {
   xFraction: 0.72,   // how far right (0.72 = right of center, not at the edge)
   yFraction: 0.62,   // how far down  (0.62 = just below vertical center)
 
-  fontSize: 36,
+  fontSize: 52,
   fontFamily: 'serif',
-  color: 'rgba(160, 90, 160, 0.55)',   // semi-transparent violet
+  color: 'rgba(180, 100, 180, 0.80)',   // violet, clearly visible
+  strokeColor: 'rgba(255, 255, 255, 0.45)', // white outline for contrast on dark backgrounds
+  strokeWidth: 2,
   rotation: -20,                        // slight diagonal tilt
 };
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,23 +66,31 @@ async function isAlreadyWatermarked(filePath) {
 }
 
 function buildWatermarkSvg(width, height) {
-  const { text, xFraction, yFraction, fontSize, fontFamily, color, rotation } = CONFIG;
+  const { text, xFraction, yFraction, fontSize, fontFamily, color, strokeColor, strokeWidth, rotation } = CONFIG;
 
   const cx = Math.round(width  * xFraction);
   const cy = Math.round(height * yFraction);
+  const tf = `rotate(${rotation}, ${cx}, ${cy})`;
 
-  // Outer SVG — full image size for compositing
+  // Two passes: white outline first (for contrast), then colored fill on top
   return Buffer.from(
     `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">` +
+    // Stroke pass — white halo for legibility on dark backgrounds
     `<text ` +
       `x="${cx}" y="${cy}" ` +
-      `font-size="${fontSize}" ` +
-      `font-family="${fontFamily}" ` +
-      `font-style="italic" ` +
+      `font-size="${fontSize}" font-family="${fontFamily}" font-style="italic" ` +
+      `fill="none" ` +
+      `stroke="${strokeColor}" stroke-width="${strokeWidth * 2}" stroke-linejoin="round" ` +
+      `text-anchor="middle" dominant-baseline="middle" ` +
+      `transform="${tf}"` +
+    `>${text}</text>` +
+    // Fill pass — colored text
+    `<text ` +
+      `x="${cx}" y="${cy}" ` +
+      `font-size="${fontSize}" font-family="${fontFamily}" font-style="italic" ` +
       `fill="${color}" ` +
-      `text-anchor="middle" ` +
-      `dominant-baseline="middle" ` +
-      `transform="rotate(${rotation}, ${cx}, ${cy})"` +
+      `text-anchor="middle" dominant-baseline="middle" ` +
+      `transform="${tf}"` +
     `>${text}</text>` +
     `</svg>`
   );
