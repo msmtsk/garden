@@ -1,5 +1,7 @@
 ---
 import { typeBadgeClass } from '../utils';
+import { readdirSync } from 'fs';
+import { join } from 'path';
 
 interface Product {
   id: string;
@@ -21,13 +23,21 @@ interface Props {
 
 const { product, base } = Astro.props;
 const badgeClass = typeBadgeClass(product.type);
-const _allImgs = import.meta.glob('/public/images/**/*.{jpg,jpeg,png,webp,gif}');
-const _productImgs = Object.keys(_allImgs)
-  .filter(p => p.startsWith(`/public/images/${product.id}/`))
-  .sort();
-const imgSrc = _productImgs.length
-  ? _productImgs[0].replace('/public', base || '')
-  : `${base}/images/${product.id}/1.jpg`;
+const rozetteSize = (product as any).attributes?.rozetteSize;
+
+// Get first image alphabetically from public/images/{id}/
+function getFirstImage(id: string, base: string): string {
+  try {
+    const dir = join(process.cwd(), 'public', 'images', id);
+    const files = readdirSync(dir)
+      .filter((f: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(f))
+      .sort();
+    if (files.length > 0) return `${base}/images/${id}/${files[0]}`;
+  } catch {}
+  return `${base}/images/${id}/1.jpg`;
+}
+
+const imgSrc = getFirstImage(product.id, base);
 ---
 
 <article class="card" data-id={product.id}>
@@ -40,15 +50,14 @@ const imgSrc = _productImgs.length
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
       />
       <div class="card-photo-placeholder" style="display:none">🌿</div>
-
       <span class={`badge ${badgeClass} card-type`}>{product.type}</span>
       <span class={`card-avail ${product.inStock ? 'avail-yes' : 'avail-no'}`}></span>
     </div>
 
     <div class="card-body">
       <div class="card-name">{product.name}</div>
-      {product.description && (
-        <div class="card-desc">{product.description}</div>
+      {rozetteSize && (
+        <div class="card-rozette">{rozetteSize}</div>
       )}
       <div class="card-footer">
         <span class="card-price">{product.price} ₽</span>
@@ -83,72 +92,70 @@ const imgSrc = _productImgs.length
     transition: border-color 0.2s, transform 0.2s;
   }
   .card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-
   .card-link { text-decoration: none; color: inherit; display: flex; flex-direction: column; flex: 1; }
-
   .card-img {
-    position: relative; height: 200px;
+    position: relative; height: 280px;
     background: #f5f0fa;
     display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
   }
-  .card-photo { width: 100%; height: 100%; object-fit: cover; }
+  .card-photo { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
   .card-photo-placeholder { font-size: 52px; opacity: 0.4; width: 100%; height: 100%; align-items: center; justify-content: center; }
-
   .card-type { position: absolute; top: 10px; left: 10px; }
-  .card-avail {
-    position: absolute; top: 12px; right: 12px;
-    width: 8px; height: 8px; border-radius: 50%;
-  }
+  .card-avail { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; border-radius: 50%; }
   .avail-yes { background: #4CAF82; }
   .avail-no { background: #ccc; }
-
-  .card-body { padding: 12px 14px 14px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-  .card-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 17px; font-weight: 500; line-height: 1.25;
-  }
-  .card-desc {
-    font-size: 12px; color: var(--text-muted); line-height: 1.5;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    flex: 1;
-  }
-  .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .card-body { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .card-name { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 500; line-height: 1.25; }
+  .card-rozette { font-size: 11px; color: var(--text-faint); letter-spacing: 0.03em; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
   .card-price { font-size: 16px; font-weight: 500; }
   .card-btn-hint { font-size: 12px; color: var(--green); }
   .card-sold { font-size: 12px; color: var(--text-faint); }
-
   .card-add-btn {
     width: 100%; border: none; border-top: 0.5px solid var(--border);
     background: none; padding: 10px;
     font-size: 13px; font-weight: 500; color: var(--green);
     cursor: pointer; font-family: 'DM Sans', sans-serif;
-    transition: background 0.15s;
+    transition: background 0.15s, color 0.15s;
   }
   .card-add-btn:hover { background: var(--green-light); }
-  .card-add-btn.added { color: #fff; background: var(--green); }
+  .card-add-btn.in-cart { color: #fff; background: var(--green); }
 </style>
 
 <script>
+  function syncCartButtons() {
+    const cart: any[] = JSON.parse(localStorage.getItem('mg-cart') || '[]');
+    const inCartIds = new Set(cart.map((i: any) => i.id));
+    document.querySelectorAll<HTMLButtonElement>('.card-add-btn').forEach(btn => {
+      const id = btn.dataset.id!;
+      if (inCartIds.has(id)) {
+        btn.textContent = '✓ В корзине';
+        btn.classList.add('in-cart');
+      } else {
+        btn.textContent = '+ В корзину';
+        btn.classList.remove('in-cart');
+      }
+    });
+  }
+
   document.querySelectorAll<HTMLButtonElement>('.card-add-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const { id, name, type, price } = btn.dataset;
-      const cart = JSON.parse(localStorage.getItem('mg-cart') || '[]');
-      const existing = cart.find((i: any) => i.id === id);
-      if (existing) {
-        existing.qty += 1;
+      let cart: any[] = JSON.parse(localStorage.getItem('mg-cart') || '[]');
+      const existingIdx = cart.findIndex((i: any) => i.id === id);
+      if (existingIdx >= 0) {
+        cart.splice(existingIdx, 1);
       } else {
         cart.push({ id, name, type, price: Number(price), qty: 1 });
       }
       localStorage.setItem('mg-cart', JSON.stringify(cart));
       window.dispatchEvent(new Event('mg-cart-updated'));
-
-      btn.textContent = '✓ Добавлено';
-      btn.classList.add('added');
-      setTimeout(() => {
-        btn.textContent = '+ В корзину';
-        btn.classList.remove('added');
-      }, 1500);
+      syncCartButtons();
     });
   });
+
+  syncCartButtons();
+  window.addEventListener('mg-cart-updated', syncCartButtons);
 </script>

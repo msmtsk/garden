@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+dist2/
 
 # Astro cache
 .astro/
@@ -24,3 +25,5 @@ Thumbs.db
 
 # Logs
 npm-debug.log*
+
+CLAUDE.md

@@ -6,7 +6,15 @@ import config from '../../config.json';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const types = ['Все', ...config.productTypes];
-const categories = ['Все', ...config.categories];
+
+// Unique rozetteSize values (preserve natural order from data)
+const seenSizes = new Set<string>();
+const rozetteSizes: string[] = [];
+for (const p of products) {
+  const s = (p as any).attributes?.rozetteSize;
+  if (s && !seenSizes.has(s)) { seenSizes.add(s); rozetteSizes.push(s); }
+}
+rozetteSizes.sort();
 ---
 
 <Layout>
@@ -39,9 +47,10 @@ const categories = ['Все', ...config.categories];
         ))}
       </div>
       <div class="filter-group">
-        <span class="filter-label">Категория:</span>
-        {categories.map(c => (
-          <button class={`chip ${c === 'Все' ? 'chip-active' : ''}`} data-filter-cat={c}>{c}</button>
+        <span class="filter-label">Розетка:</span>
+        <button class="chip chip-active" data-filter-rozette="Все">Все</button>
+        {rozetteSizes.map(s => (
+          <button class="chip" data-filter-rozette={s}>{s}</button>
         ))}
       </div>
       <label class="filter-stock">
@@ -58,8 +67,8 @@ const categories = ['Все', ...config.categories];
         <div
           class="grid-item"
           data-type={product.type}
-          data-cat={product.category}
           data-stock={product.inStock ? 'true' : 'false'}
+          data-rozette={(product as any).attributes?.rozetteSize ?? ''}
         >
           <ProductCard product={product} base={base} />
         </div>
@@ -137,19 +146,19 @@ const categories = ['Все', ...config.categories];
 
 <script>
   let activeType = 'Все';
-  let activeCat = 'Все';
+  let activeRozette = 'Все';
   let onlyStock = false;
 
   function applyFilters() {
     const items = document.querySelectorAll<HTMLElement>('.grid-item');
     let visible = 0;
     items.forEach(item => {
-      const type = item.dataset.type!;
-      const cat = item.dataset.cat!;
-      const stock = item.dataset.stock === 'true';
+      const type    = item.dataset.type!;
+      const stock   = item.dataset.stock === 'true';
+      const rozette = item.dataset.rozette!;
       const show =
         (activeType === 'Все' || type === activeType) &&
-        (activeCat === 'Все' || cat === activeCat) &&
+        (activeRozette === 'Все' || rozette === activeRozette) &&
         (!onlyStock || stock);
       item.classList.toggle('hidden', !show);
       if (show) visible++;
@@ -169,11 +178,11 @@ const categories = ['Все', ...config.categories];
     });
   });
 
-  document.querySelectorAll<HTMLButtonElement>('[data-filter-cat]').forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>('[data-filter-rozette]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-filter-cat]').forEach(b => b.classList.remove('chip-active'));
+      document.querySelectorAll('[data-filter-rozette]').forEach(b => b.classList.remove('chip-active'));
       btn.classList.add('chip-active');
-      activeCat = btn.dataset.filterCat!;
+      activeRozette = btn.dataset.filterRozette!;
       applyFilters();
     });
   });

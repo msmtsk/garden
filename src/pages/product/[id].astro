@@ -3,6 +3,8 @@ import Layout from '../../layouts/Layout.astro';
 import { typeBadgeClass } from '../../utils';
 import products from '../../../products.json';
 import config from '../../../config.json';
+import { readdirSync } from 'fs';
+import { join } from 'path';
 
 export async function getStaticPaths() {
   return products.map(p => ({ params: { id: p.id } }));
@@ -13,25 +15,39 @@ const product = products.find(p => p.id === id)!;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const badgeClass = typeBadgeClass(product.type);
 
-// Scan images at build time using import.meta.glob
-const allImages = import.meta.glob('/public/images/**/*.{jpg,jpeg,png,webp,gif}');
-const photos: string[] = Object.keys(allImages)
-  .filter(p => p.startsWith(`/public/images/${product.id}/`))
-  .map(p => p.replace('/public', base || ''))
-  .sort();
-if (photos.length === 0) photos.push(`${base}/images/${product.id}/1.jpg`);
+function getImages(productId: string, base: string): string[] {
+  try {
+    const dir = join(process.cwd(), 'public', 'images', productId);
+    const files = readdirSync(dir)
+      .filter((f: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(f))
+      .sort()
+      .map((f: string) => `${base}/images/${productId}/${f}`);
+    if (files.length > 0) return files;
+  } catch {}
+  return [`${base}/images/${productId}/1.jpg`];
+}
+
+const photos = getImages(product.id, base);
 
 const attrs = (product as any).attributes ?? {};
 const attrMap = [
   { key: 'rozetteSize', label: 'Размер розетки' },
-  { key: 'flowerType',  label: 'Тип цветка' },
-  { key: 'color',       label: 'Окраска' },
-  { key: 'petalEdge',   label: 'Край лепестка' },
-  { key: 'foliage',     label: 'Листва' },
 ];
 const filledAttrs = attrMap.filter(a => attrs[a.key]);
 const enabledDelivery = config.delivery.filter(d => d.enabled);
 const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакте');
+
+// Related products — get first image for each
+function getFirstImage(productId: string, base: string): string {
+  try {
+    const dir = join(process.cwd(), 'public', 'images', productId);
+    const files = readdirSync(dir)
+      .filter((f: string) => /\.(jpg|jpeg|png|webp|gif)$/i.test(f))
+      .sort();
+    if (files.length > 0) return `${base}/images/${productId}/${files[0]}`;
+  } catch {}
+  return `${base}/images/${productId}/1.jpg`;
+}
 ---
 
 <Layout title={product.name}>
@@ -44,16 +60,10 @@ const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакт
     </nav>
 
     <div class="product">
-
-      <!-- Gallery -->
       <div class="gallery">
         <div class="main-img" id="main-img">
-          <img
-            src={photos[0]}
-            alt={product.name}
-            id="main-photo"
-            onerror="this.style.display='none';document.getElementById('main-placeholder').style.display='flex'"
-          />
+          <img src={photos[0]} alt={product.name} id="main-photo"
+            onerror="this.style.display='none';document.getElementById('main-placeholder').style.display='flex'" />
           <div class="img-placeholder" id="main-placeholder">🌿</div>
           <button class="zoom-btn" id="zoom-btn" title="Открыть полностью">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -72,7 +82,6 @@ const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакт
         )}
       </div>
 
-      <!-- Info -->
       <div class="info">
         <div class="info-badges">
           <span class={`badge ${badgeClass}`}>{product.type}</span>
@@ -81,20 +90,16 @@ const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакт
             : <span class="badge badge-nostock">Нет в наличии</span>
           }
         </div>
-
         <h1 class="product-name">{product.name}</h1>
         {(product as any).author && (
           <div class="product-author">Автор сорта: <span>{(product as any).author}</span></div>
         )}
-
         <div class="price-row">
           <span class="price">{product.price} ₽</span>
           <span class="price-per">за {product.type.toLowerCase()}</span>
         </div>
-
         {filledAttrs.length > 0 && (
           <div class="attrs">
-            <div class="attrs-title">Характеристики</div>
             {filledAttrs.map(a => (
               <div class="attr-row">
                 <span class="attr-key">{a.label}</span>
@@ -103,14 +108,12 @@ const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакт
             ))}
           </div>
         )}
-
         {product.description && (
           <div class="desc">
             <div class="desc-title">Описание</div>
             <p class="desc-text">{product.description}</p>
           </div>
         )}
-
         <div class="actions">
           {product.inStock && (
             <button class="btn-primary" id="add-to-cart"
@@ -120,138 +123,94 @@ const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакт
             </button>
           )}
           {vkContact && (
-            <a class="btn-vk" id="ask-vk"
-              href={`https://vk.me/${vkContact.url.replace(/.*vk\.com\//, '')}?msg=${encodeURIComponent(`Здравствуйте! Интересует "${product.name}" (${product.type}). В наличии?`)}`}
+            <a class="btn-vk" href={`https://vk.me/${vkContact.url.replace(/.*vk\.com\//, '')}?msg=${encodeURIComponent(`Здравствуйте! Интересует "${product.name}" (${product.type}). В наличии?`)}`}
               target="_blank" rel="noopener">
               Задать вопрос во ВКонтакте
             </a>
           )}
         </div>
-
         {enabledDelivery.length > 0 && (
-          <div class="delivery-note">
-            {enabledDelivery.map(d => d.name).join(' · ')}
-          </div>
+          <div class="delivery-note">{enabledDelivery.map(d => d.name).join(' · ')}</div>
         )}
       </div>
     </div>
 
-    <!-- Related -->
     {products.filter(p => p.id !== product.id).length > 0 && (
       <div class="related">
         <div class="related-title">Другие растения</div>
         <div class="related-grid">
-          {products.filter(p => p.id !== product.id).slice(0, 4).map(p => {
-            const relPhotos = Object.keys(allImages)
-              .filter(path => path.startsWith(`/public/images/${p.id}/`))
-              .map(path => path.replace('/public', base || ''))
-              .sort();
-            const firstPhoto = relPhotos[0] ?? `${base}/images/${p.id}/1.jpg`;
-            return (
-              <a href={`${base}/product/${p.id}`} class="rel-card">
-                <div class="rel-img">
-                  <img src={firstPhoto} alt={p.name}
-                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
-                  <div class="rel-placeholder">🌿</div>
+          {products.filter(p => p.id !== product.id).slice(0, 4).map(p => (
+            <a href={`${base}/product/${p.id}`} class="rel-card">
+              <div class="rel-img">
+                <img src={getFirstImage(p.id, base)} alt={p.name}
+                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+                <div class="rel-placeholder">🌿</div>
+              </div>
+              <div class="rel-body">
+                <div class="rel-name">{p.name}</div>
+                <div class="rel-meta">
+                  <span class={`badge ${typeBadgeClass(p.type)}`}>{p.type}</span>
+                  <span class="rel-price">{p.price} ₽</span>
                 </div>
-                <div class="rel-body">
-                  <div class="rel-name">{p.name}</div>
-                  <div class="rel-meta">
-                    <span class={`badge ${typeBadgeClass(p.type)}`}>{p.type}</span>
-                    <span class="rel-price">{p.price} ₽</span>
-                  </div>
-                </div>
-              </a>
-            );
-          })}
+              </div>
+            </a>
+          ))}
         </div>
       </div>
     )}
-
   </div>
 
-  <!-- Lightbox -->
   <div class="lightbox" id="lightbox">
     <button class="lightbox-close" id="lightbox-close">✕</button>
     <button class="lightbox-prev" id="lightbox-prev">‹</button>
     <button class="lightbox-next" id="lightbox-next">›</button>
-    <div class="lightbox-img-wrap">
-      <img src="" alt="" id="lightbox-img" />
-    </div>
+    <div class="lightbox-img-wrap"><img src="" alt="" id="lightbox-img" /></div>
     <div class="lightbox-counter" id="lightbox-counter"></div>
   </div>
 </Layout>
 
 <style>
   .product-page { padding: 1.25rem 1.5rem 3rem; }
-
   .breadcrumb { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-muted); margin-bottom: 1.5rem; }
   .breadcrumb a { color: var(--text-muted); text-decoration: none; }
   .breadcrumb a:hover { color: var(--text); }
   .sep { color: var(--border-hover); }
-
   .product { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
-
-  /* Gallery */
-  .main-img {
-    height: 420px; background: #f5f0fa; border-radius: var(--radius);
-    overflow: hidden; margin-bottom: 10px; position: relative;
-    display: flex; align-items: center; justify-content: center;
-    cursor: zoom-in;
-  }
-  .main-img img { width: 100%; height: 100%; object-fit: contain; background: #f5f0fa; }
+  .main-img { height: 420px; background: #f5f0fa; border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; position: relative; display: flex; align-items: center; justify-content: center; cursor: zoom-in; }
+  .main-img img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .img-placeholder { font-size: 72px; opacity: 0.3; display: none; align-items: center; justify-content: center; width: 100%; height: 100%; position: absolute; }
-
-  .zoom-btn {
-    position: absolute; bottom: 12px; right: 12px;
-    width: 34px; height: 34px; border-radius: 8px;
-    background: rgba(255,255,255,0.9); border: 0.5px solid var(--border);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    color: var(--text-muted); opacity: 0; transition: opacity 0.2s;
-  }
+  .zoom-btn { position: absolute; bottom: 12px; right: 12px; width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 0.5px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); opacity: 0; transition: opacity 0.2s; }
   .main-img:hover .zoom-btn { opacity: 1; }
-
   .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
   .thumb { width: 72px; height: 72px; border-radius: 7px; overflow: hidden; border: 1.5px solid transparent; cursor: pointer; background: #f0ebe8; flex-shrink: 0; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; }
   .thumb-active { border-color: var(--green); }
   .thumb:hover { border-color: var(--border-hover); }
-
-  /* Info */
   .info { display: flex; flex-direction: column; gap: 0; }
   .info-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
   .badge-instock { background: #E6F4E8; color: #2A6E34; }
   .badge-nostock { background: #f0f0f0; color: #888; }
-
   .product-name { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 500; line-height: 1.15; margin-bottom: 6px; }
   .product-author { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
   .product-author span { color: var(--text); }
-
   .price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 0.5px solid var(--border); }
   .price { font-size: 30px; font-weight: 500; }
   .price-per { font-size: 13px; color: var(--text-muted); }
-
-  .attrs { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 0.5px solid var(--border); }
-  .attrs-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px; }
-  .attr-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+  .attrs { margin-bottom: 16px; }
+  .attr-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 0.5px solid var(--border); }
   .attr-row:last-child { border-bottom: none; }
   .attr-key { font-size: 13px; color: var(--text-muted); }
   .attr-val { font-size: 13px; font-weight: 500; }
-
   .desc { margin-bottom: 20px; }
   .desc-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
   .desc-text { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
-
   .actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .btn-primary { width: 100%; background: var(--green); color: #fff; border: none; border-radius: 8px; padding: 13px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s; }
   .btn-primary:hover { background: var(--green-dark); }
   .btn-primary.added { background: var(--green-dark); }
   .btn-vk { display: block; width: 100%; background: #4680C2; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; text-align: center; text-decoration: none; transition: background 0.15s; }
   .btn-vk:hover { background: #3566A8; }
-
   .delivery-note { font-size: 12px; color: var(--text-faint); text-align: center; }
-
-  /* Related */
   .related-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
   .related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .rel-card { text-decoration: none; color: inherit; background: #fff; border: 0.5px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.15s; }
@@ -263,42 +222,18 @@ const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакт
   .rel-name { font-size: 13px; font-weight: 500; margin-bottom: 5px; line-height: 1.3; }
   .rel-meta { display: flex; align-items: center; justify-content: space-between; }
   .rel-price { font-size: 13px; font-weight: 500; }
-
-  /* Lightbox */
-  .lightbox {
-    display: none; position: fixed; inset: 0; z-index: 1000;
-    background: rgba(0,0,0,0.92);
-    align-items: center; justify-content: center;
-    flex-direction: column;
-  }
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.92); align-items: center; justify-content: center; flex-direction: column; }
   .lightbox.open { display: flex; }
-  .lightbox-img-wrap {
-    max-width: 90vw; max-height: 85vh;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .lightbox-img-wrap img {
-    max-width: 90vw; max-height: 85vh;
-    object-fit: contain; border-radius: 4px;
-  }
-  .lightbox-close {
-    position: fixed; top: 20px; right: 24px;
-    background: none; border: none; color: #fff;
-    font-size: 28px; cursor: pointer; line-height: 1; padding: 4px 8px;
-    opacity: 0.7;
-  }
+  .lightbox-img-wrap { max-width: 90vw; max-height: 85vh; display: flex; align-items: center; justify-content: center; }
+  .lightbox-img-wrap img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 4px; }
+  .lightbox-close { position: fixed; top: 20px; right: 24px; background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; line-height: 1; padding: 4px 8px; opacity: 0.7; }
   .lightbox-close:hover { opacity: 1; }
-  .lightbox-prev, .lightbox-next {
-    position: fixed; top: 50%; transform: translateY(-50%);
-    background: rgba(255,255,255,0.1); border: none; color: #fff;
-    font-size: 36px; cursor: pointer; padding: 12px 16px; border-radius: 6px;
-    opacity: 0.7; line-height: 1;
-  }
+  .lightbox-prev, .lightbox-next { position: fixed; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 36px; cursor: pointer; padding: 12px 16px; border-radius: 6px; opacity: 0.7; line-height: 1; }
   .lightbox-prev:hover, .lightbox-next:hover { opacity: 1; background: rgba(255,255,255,0.2); }
   .lightbox-prev { left: 16px; }
   .lightbox-next { right: 16px; }
   .lightbox-counter { position: fixed; bottom: 20px; color: rgba(255,255,255,0.5); font-size: 13px; }
   .lightbox-prev.hidden, .lightbox-next.hidden { display: none; }
-
   @media (max-width: 700px) {
     .product { grid-template-columns: 1fr; gap: 1.5rem; }
     .related-grid { grid-template-columns: repeat(2, 1fr); }
@@ -309,90 +244,66 @@ const vkContact = config.contacts.find((c: any) => c.label === 'ВКонтакт
 
 <script define:vars={{ photos }}>
   let currentIdx = 0;
-
-  // ── Gallery ──────────────────────────────────────────────────────────────
   function setMainPhoto(src, idx) {
     currentIdx = idx;
     const photo = document.getElementById('main-photo');
     const placeholder = document.getElementById('main-placeholder');
     if (!photo) return;
-    photo.style.display = '';
-    placeholder.style.display = 'none';
-    photo.src = src;
-    photo.onerror = () => {
-      photo.style.display = 'none';
-      placeholder.style.display = 'flex';
-    };
-    document.querySelectorAll('.thumb').forEach((t, i) => {
-      t.classList.toggle('thumb-active', i === idx);
-    });
+    photo.style.display = ''; placeholder.style.display = 'none'; photo.src = src;
+    photo.onerror = () => { photo.style.display = 'none'; placeholder.style.display = 'flex'; };
+    document.querySelectorAll('.thumb').forEach((t, i) => t.classList.toggle('thumb-active', i === idx));
   }
-
   document.querySelectorAll('.thumb').forEach((thumb, i) => {
     thumb.addEventListener('click', () => setMainPhoto(thumb.dataset.src, i));
   });
-
-  // ── Lightbox ─────────────────────────────────────────────────────────────
   const lightbox = document.getElementById('lightbox');
-  const lbImg    = document.getElementById('lightbox-img');
+  const lbImg = document.getElementById('lightbox-img');
   const lbCounter = document.getElementById('lightbox-counter');
-  const lbPrev   = document.getElementById('lightbox-prev');
-  const lbNext   = document.getElementById('lightbox-next');
-
+  const lbPrev = document.getElementById('lightbox-prev');
+  const lbNext = document.getElementById('lightbox-next');
   function openLightbox(idx) {
-    currentIdx = idx;
-    lbImg.src = photos[idx];
-    lbCounter.textContent = photos.length > 1 ? `${idx + 1} / ${photos.length}` : '';
+    currentIdx = idx; lbImg.src = photos[idx];
+    lbCounter.textContent = photos.length > 1 ? `${idx+1} / ${photos.length}` : '';
     lbPrev.classList.toggle('hidden', photos.length <= 1);
     lbNext.classList.toggle('hidden', photos.length <= 1);
-    lightbox.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    lightbox.classList.add('open'); document.body.style.overflow = 'hidden';
   }
-
-  function closeLightbox() {
-    lightbox.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-
+  function closeLightbox() { lightbox.classList.remove('open'); document.body.style.overflow = ''; }
   function lbGo(dir) {
     currentIdx = (currentIdx + dir + photos.length) % photos.length;
     lbImg.src = photos[currentIdx];
-    lbCounter.textContent = `${currentIdx + 1} / ${photos.length}`;
+    lbCounter.textContent = `${currentIdx+1} / ${photos.length}`;
     setMainPhoto(photos[currentIdx], currentIdx);
   }
-
-  document.getElementById('main-img')?.addEventListener('click', (e) => {
-    if ((e.target).closest('.zoom-btn')) return;
-    openLightbox(currentIdx);
-  });
+  document.getElementById('main-img')?.addEventListener('click', e => { if (e.target.closest('.zoom-btn')) return; openLightbox(currentIdx); });
   document.getElementById('zoom-btn')?.addEventListener('click', () => openLightbox(currentIdx));
   document.getElementById('lightbox-close')?.addEventListener('click', closeLightbox);
-  lightbox?.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+  lightbox?.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
   lbPrev?.addEventListener('click', () => lbGo(-1));
   lbNext?.addEventListener('click', () => lbGo(1));
-
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     if (!lightbox.classList.contains('open')) return;
     if (e.key === 'Escape') closeLightbox();
     if (e.key === 'ArrowLeft') lbGo(-1);
     if (e.key === 'ArrowRight') lbGo(1);
   });
-
-  // ── Add to cart ──────────────────────────────────────────────────────────
   const addBtn = document.getElementById('add-to-cart');
+  function syncBtn() {
+    if (!addBtn) return;
+    const cart = JSON.parse(localStorage.getItem('mg-cart') || '[]');
+    const inCart = cart.some(i => i.id === addBtn.dataset.id);
+    addBtn.textContent = inCart ? '✓ В корзине (убрать)' : 'Добавить в корзину';
+    addBtn.classList.toggle('added', inCart);
+  }
   addBtn?.addEventListener('click', () => {
     const { id, name, type, price } = addBtn.dataset;
-    const cart = JSON.parse(localStorage.getItem('mg-cart') || '[]');
-    const existing = cart.find(i => i.id === id);
-    if (existing) existing.qty += 1;
-    else cart.push({ id, name, type, price: Number(price), qty: 1 });
+    let cart = JSON.parse(localStorage.getItem('mg-cart') || '[]');
+    const idx = cart.findIndex(i => i.id === id);
+    if (idx >= 0) cart.splice(idx, 1); else cart.push({ id, name, type, price: Number(price), qty: 1 });
     localStorage.setItem('mg-cart', JSON.stringify(cart));
     window.dispatchEvent(new Event('mg-cart-updated'));
-    addBtn.textContent = '✓ Добавлено в корзину';
-    addBtn.classList.add('added');
-    setTimeout(() => {
-      addBtn.textContent = 'Добавить в корзину';
-      addBtn.classList.remove('added');
-    }, 2000);
+    syncBtn();
   });
+  syncBtn();
+  window.addEventListener('mg-cart-updated', syncBtn);
 </script>

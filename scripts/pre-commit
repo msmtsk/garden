@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# Git pre-commit hook: watermarks staged images before they land in the repo.
+# Installed automatically via: npm run setup-hooks
+#
+
+# Find staged image files inside public/images/
+STAGED_IMAGES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^public/images/.*\.(jpg|jpeg|png|webp)$')
+
+if [ -z "$STAGED_IMAGES" ]; then
+  exit 0
+fi
+
+echo "🖼  Watermarking staged images..."
+
+# Run watermark script, passing staged files as arguments
+node scripts/watermark.js $STAGED_IMAGES
+
+if [ $? -ne 0 ]; then
+  echo "❌ Watermarking failed. Commit aborted."
+  exit 1
+fi
+
+# Re-stage the now-watermarked files
+git add $STAGED_IMAGES
+
+echo "✅ Images watermarked and re-staged."
